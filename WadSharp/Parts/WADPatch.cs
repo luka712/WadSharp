@@ -5,7 +5,7 @@ namespace WadSharp.Parts;
 /// The patch of the WAD file.
 /// For more <see cref="https://doomwiki.org/wiki/TEXTURE1_and_TEXTURE2">TEXTURE1 and TEXTURE2</see>.
 /// </summary>
-public class WadPatch
+public class WADPatch
 {
     /// <summary>
     /// A short int defining the horizontal offset of the patch relative to the upper-left of the texture. 

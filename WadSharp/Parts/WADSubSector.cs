@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace WadSharp.Parts;
+﻿namespace WadSharp.Parts;
 
 /// <summary>
 /// SSECTORS (an abbreviation for subsectors) is the name of a WAD lump which is a component of a level.
