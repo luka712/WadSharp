@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Content\Freedoom\**" />
+    <EmbeddedResource Remove="Content\Freedoom\**" />
+    <None Remove="Content\Freedoom\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Content\freedoom-0.13.0\freedoom1.wad">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\freedoom-0.13.0\freedoom1_gl.wad">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
