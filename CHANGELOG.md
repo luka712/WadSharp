@@ -1,3 +1,8 @@
+## [0.3.0] - 21-07-2025
+
+### Added
+- Conversion to 'Gltf' format.
+
 ## [0.2.0] - 16-07-2025
 
 ### Added
