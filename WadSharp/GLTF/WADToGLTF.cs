@@ -2,6 +2,8 @@
 using AssetToolkit.Image;
 using SharpGLTF.Schema2;
 using System.Numerics;
+using System.Security.Cryptography;
+using WadSharp.GLTF.Data;
 using WadSharp.Parsing;
 
 namespace WadSharp.GLTF;
@@ -14,38 +16,38 @@ public class WadToGltf
     private readonly ImageService imgService = new();
 
     /// <summary>
-    /// Convert a position array to a <see cref="Vector4"/> starting at the given index.
+    /// Convert a array to a <see cref="Vector4"/> starting at the given index.
     /// </summary>
-    /// <param name="positions">The positions array.</param>
+    /// <param name="array">The array.</param>
     /// <param name="startIndex">The start index, or index of X.</param>
     /// <returns>The <see cref="Vector4"/>.</returns>
-    private static Vector4 ToVector4(float[] positions, int startIndex)
-        => new Vector4(positions[startIndex + 0],
-                       positions[startIndex + 1],
-                       positions[startIndex + 2],
-                       positions[startIndex + 3]
+    private static Vector4 ToVector4(float[] array, int startIndex)
+        => new Vector4(array[startIndex + 0],
+                       array[startIndex + 1],
+                       array[startIndex + 2],
+                       array[startIndex + 3]
                        );
 
     /// <summary>
-    /// Convert a position array to a <see cref="Vector3"/> starting at the given index.
+    /// Convert a array to a <see cref="Vector3"/> starting at the given index.
     /// </summary>
-    /// <param name="positions">The positions array.</param>
+    /// <param name="array">The array.</param>
     /// <param name="startIndex">The start index, or index of X.</param>
     /// <returns>The <see cref="Vector3"/>.</returns>
-    private static Vector3 ToVector3(float[] positions, int startIndex)
-        => new Vector3(positions[startIndex + 0],
-                       positions[startIndex + 1],
-                       positions[startIndex + 2]);
+    private static Vector3 ToVector3(float[] array, int startIndex)
+        => new Vector3(array[startIndex + 0],
+                       array[startIndex + 1],
+                       array[startIndex + 2]);
 
     /// <summary>
-    /// Convert a position array to a <see cref="Vector2"/> starting at the given index.
+    /// Convert a array to a <see cref="Vector2"/> starting at the given index.
     /// </summary>
-    /// <param name="positions">The positions array.</param>
+    /// <param name="array">The array.</param>
     /// <param name="startIndex">The start index, or index of X.</param>
     /// <returns>The <see cref="Vector2"/>.</returns>
-    private static Vector2 ToVector2(float[] positions, int startIndex)
-        => new Vector2(positions[startIndex + 0],
-                       positions[startIndex + 1]);
+    private static Vector2 ToVector2(float[] array, int startIndex)
+        => new Vector2(array[startIndex + 0],
+                       array[startIndex + 1]);
 
     /// <summary>
     /// Convert a position array to an array of <see cref="Vector3"/>s.
@@ -92,8 +94,7 @@ public class WadToGltf
         return vectorArray;
     }
 
-    private void CreateNode(
-        Scene scene,
+    private WADToGLTFNodeData CreateNode(
         ModelRoot model,
         ParserSector sector,
         List<ParserImage> images,
@@ -103,12 +104,19 @@ public class WadToGltf
         float[] colorsVertices,
         uint[] indices)
     {
-        AddImageToModel(images.First(x => x.Name == image), model);
+        ParserImage parserImage = images.First(x => x.Name == image);
+        bool hasTransparency = parserImage.HasTransparency;
+        AddImageToModel(parserImage, model);
 
         Material material = model.CreateMaterial(image)
-            .WithDoubleSide(true)
+            .WithDoubleSide(hasTransparency) // If we have transparency, we need double sided.
             .WithUnlit()
             .WithChannelTexture("BaseColor", 0, model.LogicalImages.First(x => x.Name == image));
+
+        if (hasTransparency)
+        {
+            material.Alpha = AlphaMode.BLEND;
+        }
 
         // Create mesh
         Vector3[] positions = ToVector3Array(posVertices);
@@ -123,9 +131,9 @@ public class WadToGltf
             .WithMaterial(material)
             .WithIndicesAccessor(PrimitiveType.TRIANGLES, indicesInt);
 
-        scene.CreateNode(sector.Id.ToString())
-            .WithMesh(mesh);
+        return new (mesh, material, hasTransparency, sector);
     }
+
 
     /// <summary>
     /// Adds images to the model.
@@ -180,12 +188,13 @@ public class WadToGltf
         ModelRoot model = ModelRoot.CreateModel();
         Scene scene = model.UseScene(0);
 
+        List<WADToGLTFNodeData> nodeDataList = new();
+
         foreach (ParserSector sector in sectors)
         {
             if (sector.FloorGeometry is not null)
             {
-                CreateNode(
-                    scene,
+                WADToGLTFNodeData nodeData = CreateNode(
                     model,
                     sector,
                     images,
@@ -194,12 +203,12 @@ public class WadToGltf
                     sector.FloorGeometry.TextureCoordinates,
                     sector.FloorGeometry.Colors,
                     sector.FloorGeometry.Indices);
+                nodeDataList.Add(nodeData);
             }
 
             if (sector.CeilingGeometry is not null)
             {
-                CreateNode(
-                    scene,
+                WADToGLTFNodeData nodeData = CreateNode(
                     model,
                     sector,
                     images,
@@ -208,21 +217,28 @@ public class WadToGltf
                     sector.CeilingGeometry.TextureCoordinates,
                     sector.CeilingGeometry.Colors,
                     sector.CeilingGeometry.Indices);
+                nodeDataList.Add(nodeData);
             }
 
             foreach (ParserSectorWall wall in sector.Walls)
             {
-                CreateNode(
-                    scene,
+                WADToGLTFNodeData nodeData = CreateNode(
                     model,
-                sector,
-                images,
-                wall.Texture ?? "",
-                wall.Geometry.Positions,
-                wall.Geometry.TextureCoordinates,
-                wall.Geometry.Colors,
-                wall.Geometry.Indices);
+                    sector,
+                    images,
+                    wall.Texture ?? "",
+                    wall.Geometry.Positions,
+                    wall.Geometry.TextureCoordinates,
+                    wall.Geometry.Colors,
+                    wall.Geometry.Indices);
+                nodeDataList.Add(nodeData);
             }
+        }
+
+        foreach(WADToGLTFNodeData nodeData in nodeDataList.OrderBy(x => x.hasTransparency))
+        {
+            scene.CreateNode($"Sector_{nodeData.wadSector.Id}")
+                .WithMesh(nodeData.mesh);
         }
 
         model.SaveGLTF($"{destinationPath}.gltf", new WriteSettings());

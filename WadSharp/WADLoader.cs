@@ -68,41 +68,77 @@ public class WADLoader(ILogger? logger = null)
     /// <summary>
     /// Load the DOOM WAD file.
     /// </summary>
-    /// <param name="filePath">The file path to the .wad file.</param>
+    /// <param name="iwadFilePath">The file path to the .wad file which represents <b>iwad</b>.</param>
+    /// <param name="pwadFilePaths">Optional file paths to the .wad files which represent <b>pwad</b>.</param>
     /// <returns>The <see cref="WAD"/>.</returns>
     /// <exception cref="FileNotFoundException">If file is not found.</exception>
-    public WAD Load(string filePath)
+    public WAD Load(string iwadFilePath, params string[] pwadFilePaths)
     {
-        if (!File.Exists(filePath))
+        if (!File.Exists(iwadFilePath))
         {
-            string msg = $"The file does not exist: {filePath}";
+            string msg = $"The file does not exist: {iwadFilePath}";
             logger?.LogError(msg);
-            throw new FileNotFoundException(msg, filePath);
+            throw new FileNotFoundException(msg, iwadFilePath);
         }
 
-        byte[] bytes = File.ReadAllBytes(filePath);
+        byte[] bytes = File.ReadAllBytes(iwadFilePath);
+        WAD iwad = ReadWAD(bytes, iwadFilePath);
 
-        return ReadWAD(bytes, filePath);
+        foreach(string pwadFilePath in pwadFilePaths)
+        {
+            if (!File.Exists(pwadFilePath))
+            {
+                string msg = $"The file does not exist: {pwadFilePath}";
+                logger?.LogError(msg);
+                throw new FileNotFoundException(msg, pwadFilePath);
+            }
+
+            byte[] pwadBytes = File.ReadAllBytes(pwadFilePath);
+            WAD pwad = ReadWAD(pwadBytes, pwadFilePath);
+
+            // Merge the PWAD into the IWAD.
+            iwad.Directories.AddRange(pwad.Directories);
+        }
+
+        return iwad;
     }
 
     /// <summary>
     /// Load the DOOM WAD file.
     /// </summary>
-    /// <param name="filePath">The file path to the .wad file.</param>
+    /// <param name="iwadFilePath">The file path to the .wad file which represents <b>iwad</b>.</param>
+    /// <param name="pwadFilePaths">Optional file paths to the .wad files which represent <b>pwad</b>.</param>
     /// <returns>The <see cref="WAD"/>.</returns>
     /// <exception cref="FileNotFoundException">If file is not found.</exception>
-    public async Task<WAD> LoadAsync(string filePath)
+    public async Task<WAD> LoadAsync(string iwadFilePath, params string[] pwadFilePaths)
     {
-        if (!File.Exists(filePath))
+        if (!File.Exists(iwadFilePath))
         {
-            string msg = $"The file does not exist: {filePath}";
+            string msg = $"The file does not exist: {iwadFilePath}";
             logger?.LogError(msg);
-            throw new FileNotFoundException(msg, filePath);
+            throw new FileNotFoundException(msg, iwadFilePath);
         }
 
-        byte[] bytes = await File.ReadAllBytesAsync(filePath);
+        byte[] bytes = await File.ReadAllBytesAsync(iwadFilePath);
+        WAD iwad = ReadWAD(bytes, iwadFilePath);
 
-        return ReadWAD(bytes, filePath);
+        foreach (string pwadFilePath in pwadFilePaths)
+        {
+            if (!File.Exists(pwadFilePath))
+            {
+                string msg = $"The file does not exist: {pwadFilePath}";
+                logger?.LogError(msg);
+                throw new FileNotFoundException(msg, pwadFilePath);
+            }
+
+            byte[] pwadBytes = await File.ReadAllBytesAsync(pwadFilePath);
+            WAD pwad = ReadWAD(pwadBytes, pwadFilePath);
+
+            // Merge the PWAD into the IWAD.
+            iwad.Directories.AddRange(pwad.Directories);
+        }
+
+        return iwad;
     }
 
     private WAD ReadWAD(byte[] bytes, string filePath)
@@ -638,7 +674,8 @@ public class WADLoader(ILogger? logger = null)
             byte r = reader.ReadByte();
             byte g = reader.ReadByte();
             byte b = reader.ReadByte();
-            playpal.PalettesColors.Add(new WADColor(r, g, b));
+            // Pallette colors are not transparent by default, therefore add 255.
+            playpal.PalettesColors.Add(new WADColor(r, g, b, 255));
         }
 
         reader.BaseStream.Seek(currentPos, SeekOrigin.Begin);

@@ -206,13 +206,13 @@ public class ParserSector
             // Create the mesh.
             ParserSector sectorObj = new()
             {
-                FloorGeometry = CreateFloorCeilingGeometry(sectorVertices, currentSector!.FloorHeight, color),
+                FloorGeometry = CreateFloorCeilingGeometry(sectorVertices, currentSector!.FloorHeight, color, true),
                 FloorImage = currentSector.FloorTexture
             };
             if (currentSector.CeilingTexture?.Contains("SKY") != true)
             {
                 sectorObj.CeilingGeometry =
-                    CreateFloorCeilingGeometry(sectorVertices, currentSector.CeilingHeight, color);
+                    CreateFloorCeilingGeometry(sectorVertices, currentSector.CeilingHeight, color, false);
                 sectorObj.CeilingImage = currentSector.CeilingTexture;
             }
 
@@ -283,8 +283,6 @@ public class ParserSector
                     }
                 }
             }
-
-            Console.WriteLine(sectorObj.Tag);
 
             sectors.Add(sectorObj);
         }
@@ -393,16 +391,27 @@ public class ParserSector
     /// </summary>
     /// <param name="vertices">The vertices of geometry.</param>
     /// <param name="height">The height of floor or ceiling geometry.</param>
+    /// <param name="color">Color of the geometry.</param>
+    /// <param name="isFloor">Set <c>true</c> if it is floor geometry, <c>false</c> if it is ceiling geometry.</param>
     /// <returns>The sector geometry.</returns>
-    private static ParserGeometry CreateFloorCeilingGeometry(Vector3[] vertices, float height, Vector4 color)
+    private static ParserGeometry CreateFloorCeilingGeometry(Vector3[] vertices, float height, Vector4 color, bool isFloor)
     {
         uint[] indices = new uint[3 * (vertices.Length - 2)];
 
         for (int i = 0, j = 1; i < indices.Length; i += 3, j++)
         {
-            indices[i] = 0;
-            indices[i + 1] = (uint)j;
-            indices[i + 2] = (uint)(j + 1);
+            if (isFloor)
+            {
+                indices[i] = (uint)(j + 1);
+                indices[i + 1] = (uint)j;
+                indices[i + 2] = 0;
+            }
+            else
+            {
+                indices[i] = 0;
+                indices[i + 1] = (uint)j;
+                indices[i + 2] = (uint)(j + 1);
+            }
         }
 
         // Create the mesh.

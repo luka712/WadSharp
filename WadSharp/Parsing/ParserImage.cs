@@ -8,6 +8,9 @@ namespace WadSharp.Parsing;
 /// </summary>
 public class ParserImage
 {
+    private bool hasTransparency = false;
+    private bool checkedForTransparency = false;
+
     /// <summary>
     /// Name of the image.
     /// </summary>
@@ -27,6 +30,40 @@ public class ParserImage
     /// The image data.
     /// </summary>
     public byte[] Data { get; set; } = Array.Empty<byte>();
+
+    /// <summary>
+    /// Returns <c>true</c> if the image has transparency, otherwise <c>false</c>.
+    /// </summary>
+    public bool HasTransparency
+    {
+        get
+        {
+            if (hasTransparency)
+            {
+                return true;
+            }
+            else
+            {
+                // Since we don't want to check it every time.
+                if (!checkedForTransparency)
+                {
+                    checkedForTransparency = true;
+
+                    // We need to check every 4th byte, since the image is RGBA.
+                    for (int i = 0; i < Data.Length - 3; i += 4)
+                    {
+                        // If the alpha channel is not 255, we have transparency.
+                        if (Data[i + 3] < 255)
+                        {
+                            hasTransparency = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            return hasTransparency;
+        }
+    }
 
     /// <summary>
     /// Parse the <see cref="WadPictureFormat"/> list into a list of <see cref="ParserImage"/>
@@ -104,10 +141,15 @@ public class ParserImage
     /// <returns>The list of parser images.</returns>
     public static List<ParserImage> Parse(WADLevel level)
     {
-        List<ParserImage> wallTextures = ParsePatches(level.Patches, level.PlayPals[0]);
-        List<ParserImage> flatTextures = ParseFlats(level.Flats, level.PlayPals[0]);
-        List<ParserImage> textures = ParseTextures(level.Texture2s, level.PNames, level.Patches, level.PlayPals[0]);
-        List<ParserImage> textures2 = ParseTextures(level.Texture1s, level.PNames, level.Patches, level.PlayPals[0]);
+        if (level.PlayPals.Count == 0)
+            throw new ArgumentException("Level must have at least one Color Palette(PlayPal) defined.");
+
+        WADPlayPal playPal = level.PlayPals[0];
+
+        List<ParserImage> wallTextures = ParsePatches(level.Patches, playPal);
+        List<ParserImage> flatTextures = ParseFlats(level.Flats, playPal);
+        List<ParserImage> textures = ParseTextures(level.Texture2s, level.PNames, level.Patches, playPal);
+        List<ParserImage> textures2 = ParseTextures(level.Texture1s, level.PNames, level.Patches, playPal);
 
         return wallTextures
             .Concat(flatTextures)
@@ -169,7 +211,7 @@ public class ParserImage
             image.Data[d] = data[i].B;
             image.Data[d + 1] = data[i].G;
             image.Data[d + 2] = data[i].R;
-            image.Data[d + 3] = 255;
+            image.Data[d + 3] = data[i].A;
         }
 
         return image;

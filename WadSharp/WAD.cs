@@ -78,7 +78,7 @@ public class WAD
             .Select(x => x.PictureFormat)
             .ToList();
 
-        WADPNames pnames = Directories.First(x => x.PNames != null).PNames!;
+        WADPNames? pnames = Directories.FirstOrDefault(x => x.PNames != null)?.PNames;
 
         List<WADGLVertex> glVertices = Directories.Count() > index + GL_VERTICES_INDEX ? Directories[index + GL_VERTICES_INDEX].GLVertices : new();
         List<WADGLSeg> glSegs = Directories.Count > index + GL_SEGS_INDEX ? Directories[index + GL_SEGS_INDEX].GLSegs : new();
@@ -99,7 +99,7 @@ public class WAD
             Patches = patches,
             Texture1s = textures1,
             Texture2s = textures2,
-            PNames = pnames,
+            PNames = pnames ?? new(),
             GLVertices = glVertices,
             GLSegs = glSegs,
             GLSubSectors = glSubSectors,

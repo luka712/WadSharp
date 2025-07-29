@@ -19,6 +19,15 @@
     <None Update="Content\freedoom-0.13.0\freedoom1_gl.wad">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Content\freedoom-0.13.0\freedoom1_pwad.wad">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\freedoom-0.13.0\freedoom1_pwad_gl.wad">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\freedoom-0.13.0\freedoom_test.wad">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

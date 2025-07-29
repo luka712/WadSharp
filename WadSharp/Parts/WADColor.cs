@@ -12,7 +12,7 @@ public struct WADColor
     /// <param name="g">The green component.</param>
     /// <param name="b">The blue component.</param>
     /// <param name="a">The alpha component. By default, it is <c>255</c>.</param>
-    public WADColor(byte r, byte g, byte b, byte a = 255)
+    public WADColor(byte r, byte g, byte b, byte a = 0)
     {
         R = r;
         G = g;
