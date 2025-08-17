@@ -8,7 +8,7 @@
     <Title>Wad Sharp CLI</Title>
     <PackageId>$(AssemblyName)</PackageId>
     <Product>$(AssemblyName)</Product>
-    <AssemblyName>wad-sharp-cli</AssemblyName>
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

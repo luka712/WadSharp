@@ -1,8 +1,6 @@
-﻿
-using AssetToolkit.Image;
+﻿using AssetToolkit.Image;
 using SharpGLTF.Schema2;
 using System.Numerics;
-using System.Security.Cryptography;
 using WadSharp.GLTF.Data;
 using WadSharp.Parsing;
 
@@ -178,6 +176,11 @@ public class WadToGltf
     /// <param name="destinationPath"></param>
     public void ToGLTF(WADLevel level, string destinationPath)
     {
+        if(destinationPath.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase))
+        {
+            destinationPath = destinationPath[..^5]; // Remove .gltf extension if present
+        }
+
         Parser parser = new();
 
         List<ParserSector> sectors = parser.ParseSectors(level);
