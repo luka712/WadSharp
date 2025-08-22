@@ -1,38 +1,41 @@
-﻿using WadSharp;
+﻿using System.Text;
+using WadSharp;
+using WadSharp.CLI;
 using WadSharp.GLTF;
 
 args = Environment.GetCommandLineArgs();
 
-Dictionary<string, string> arguments = new();
-for(int i = 1; i < args.Length; i+=2)
+// If printing help, do it and exit.
+if (PrintHelp(args))
 {
-    if (i + 1 < args.Length)
-    {
-        arguments.Add(args[i], args[i + 1]);
-    }
+    return;
 }
 
+
 // IWAD must be provided as it's the base game data file.
-string? iwadFilePath = TryGetIWadFilePath(arguments);
+string? iwadFilePath = Util.GetArgumentValue(args, "--iwad");
 if (iwadFilePath is null)
 {
+    Console.WriteLine("--iwad argument must be provided.");
     return;
 }
 
 // PWAD is optional as it's a patch wad.
-string? pwadFilePath = TryGetPWadFilePath(arguments);
+string? pwadFilePath = Util.GetArgumentValue(args, "--pwad");
 
 // Level must be provided.
-string? level = TryGetLevelName(arguments);
-if(level is null)
+string? level = Util.GetArgumentValue(args, "--level");
+if (level is null)
 {
+    Console.WriteLine("--level argument must be provided.");
     return;
 }
 
 // Get gltf output file path
-string? gltfOutputFilePath = TryGetGltfOutputFilePath(arguments);
+string? gltfOutputFilePath = Util.GetArgumentValue(args, "--gltf");
 if (gltfOutputFilePath is null)
 {
+    Console.WriteLine("--gltf argument must be provided.");
     return;
 }
 
@@ -44,58 +47,28 @@ WADLevel wadLevel = wad.LoadLevel(level);
 WadToGltf wadToGltf = new ();
 wadToGltf.ToGLTF(wadLevel, gltfOutputFilePath);
 
-string? TryGetIWadFilePath(Dictionary<string, string> arguments)
+
+bool PrintHelp(string[] arguments)
 {
-    if (!arguments.TryGetValue("--iwad", out string? iwadPath)) 
+    if(Util.HasArgument(arguments, "--help", "-h"))
     {
-        Console.WriteLine("--iwad argument must be provided.");
-        return null;
+        StringBuilder helpText = new();
+        helpText.AppendLine("WAD to GLTF Converter");
+        helpText.AppendLine();
+        helpText.AppendLine("Usage:");
+        helpText.AppendLine("  wad-sharp-cli --iwad <path_to_iwad> --pwad <path_to_pwad> --level <level_name> --gltf <output_gltf_path>");
+        helpText.AppendLine();
+        helpText.AppendLine("Options:");
+        helpText.AppendLine("  --iwad <path_to_iwad>       Path to the IWAD file (required)");
+        helpText.AppendLine("  --pwad <path_to_pwad>       Path to the PWAD file (optional)");
+        helpText.AppendLine("  --level <level_name>        Name of the level to convert (required)");
+        helpText.AppendLine("  --gltf <output_gltf_path>   Path to save the output GLTF file (required)");
+        helpText.AppendLine("  -h, --help                  Show this help message and exit");
+        
+        Console.WriteLine(helpText.ToString());
+
+        return true;
     }
 
-    if (!File.Exists(iwadPath))
-    {
-        Console.WriteLine($"IWAD file not found at: {iwadPath}");
-        return null;
-    }
-
-    return iwadPath;
-}
-
-string? TryGetPWadFilePath(Dictionary<string, string> arguments)
-{
-    if (!arguments.TryGetValue("--pwad", out string? pwadPath))
-    {
-        Console.WriteLine("--pwad argument must be provided.");
-        return null;
-    }
-
-    if (!File.Exists(pwadPath))
-    {
-        Console.WriteLine($"PWAD file not found at: {pwadPath}");
-        return null;
-    }
-
-    return pwadPath;
-}
-
-string? TryGetLevelName(Dictionary<string, string> arguments)
-{
-    if (!arguments.TryGetValue("--level", out string? levelName))
-    {
-        Console.WriteLine("--level argument must be provided.");
-        return null;
-    }
-
-    return levelName;
-}
-
-string? TryGetGltfOutputFilePath(Dictionary<string, string> arguments)
-{
-    if (!arguments.TryGetValue("--gltf", out string? gltfName))
-    {
-        Console.WriteLine("--gltf argument must be provided.");
-        return null;
-    }
-
-    return gltfName;
+    return false;
 }
