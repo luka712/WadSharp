@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GeometryToolkit\GeometryToolkit.csproj" />
     <ProjectReference Include="..\WadSharp.Content\WadSharp.Content.csproj" />
     <ProjectReference Include="..\WadSharp\WadSharp.csproj" />
   </ItemGroup>

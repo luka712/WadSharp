@@ -1,4 +1,6 @@
-﻿using System.Numerics;
+﻿using GeometryToolkit.Vertex;
+using System.Collections.Generic;
+using System.Numerics;
 using WadSharp.Parts;
 
 namespace WadSharp.Parsing;
@@ -18,6 +20,43 @@ public class ParserSectorWall
     /// The name of a texture for a given wall.
     /// </summary>
     public string Texture { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Creates vertices from positions, texture coordinates and colors.
+    /// </summary>
+    /// <param name="positions">Positions.</param>
+    /// <param name="textureCoords">Texture coordinates.</param>
+    /// <param name="colors">Colors.</param>
+    /// <returns>
+    /// The created vertices.
+    /// </returns>
+    private static VertexPositionColorTexture[] CreateVertices(
+        IReadOnlyList<float> positions,
+        IReadOnlyList<float> textureCoords,
+        IReadOnlyList<float> colors)
+    {
+        int count = positions.Count / 3;
+        VertexPositionColorTexture[] vertices = new VertexPositionColorTexture[count];
+        for (int i = 0, p = 0, t = 0, c = 0; i < count; i++)
+        {
+            vertices[i] = new VertexPositionColorTexture()
+            {
+                Position = new Vector3(
+                    positions[p++],
+                    positions[p++],
+                    positions[p++]),
+                UV = new Vector2(
+                    textureCoords[t++],
+                    textureCoords[t++]),
+                Color = new Vector4(
+                    colors[c++],
+                    colors[c++],
+                    colors[c++],
+                    colors[c++]),
+            };
+        }
+        return vertices;
+    }
 
     public static ParserSectorWall? LoadFrontSidedWall(
         WADLineDef frontLineDef,
@@ -85,10 +124,28 @@ public class ParserSectorWall
             new(u0, v1),
             color); // Bottom left
 
-        geometry.Positions = positions.ToArray();
-        geometry.TextureCoordinates = textureCoords.ToArray();
+        int count = positions.Count / 3;
+        VertexPositionColorTexture[] vertices = new VertexPositionColorTexture[count];
+        for (int i = 0, p = 0, t = 0, c = 0; i < count; i++)
+        {
+            vertices[i] = new VertexPositionColorTexture()
+            {
+                Position = new Vector3(
+                    positions[p++],
+                    positions[p++],
+                    positions[p++]),
+                UV = new Vector2(
+                    textureCoords[t++],
+                    textureCoords[t++]),
+                Color = new Vector4(
+                    colors[c++],
+                    colors[c++],
+                    colors[c++],
+                    colors[c++]),
+            };
+        }
+        geometry.Vertices = CreateVertices(positions, textureCoords, colors);
         geometry.Indices = indices.ToArray();
-        geometry.Colors = colors.ToArray();
 
         return new()
         {
@@ -192,10 +249,9 @@ public class ParserSectorWall
             new(u0, v1),
             color); // Bottom left
 
-        geometry.Positions = positions.ToArray();
-        geometry.TextureCoordinates = textureCoords.ToArray();
+        geometry.Vertices = CreateVertices(positions, textureCoords, colors);
         geometry.Indices = indices.ToArray();
-        geometry.Colors = colors.ToArray();
+
 
         return new()
         {
@@ -285,10 +341,8 @@ public class ParserSectorWall
             new(u0, v1),
             color); // Bottom left
 
-        geometry.Positions = positions.ToArray();
-        geometry.TextureCoordinates = textureCoords.ToArray();
+        geometry.Vertices = CreateVertices(positions, textureCoords, colors);
         geometry.Indices = indices.ToArray();
-        geometry.Colors = colors.ToArray();
 
         return new()
         {
@@ -365,10 +419,8 @@ public class ParserSectorWall
             new(u0, v1),
             color); // Bottom left
 
-        geometry.Positions = positions.ToArray();
-        geometry.TextureCoordinates = textureCoords.ToArray();
+        geometry.Vertices = CreateVertices(positions, textureCoords, colors);
         geometry.Indices = indices.ToArray();
-        geometry.Colors = colors.ToArray();
 
         return new()
         {

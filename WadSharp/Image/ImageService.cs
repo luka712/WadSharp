@@ -2,6 +2,9 @@
 
 namespace AssetToolkit.Image;
 
+/// <summary>
+/// The image service to save images.
+/// </summary>
 public class ImageService
 {
     /// <summary>

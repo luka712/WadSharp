@@ -1,4 +1,4 @@
-﻿
+﻿using GeometryToolkit.Vertex;
 
 namespace WadSharp.Parsing;
 
@@ -8,24 +8,14 @@ namespace WadSharp.Parsing;
 public class ParserGeometry
 {
     /// <summary>
-    /// The vertices of the mesh.
-    /// </summary>
-    public float[] Positions { get; set; } = Array.Empty<float>();
-
-    /// <summary>
-    /// The texture coordinates of the mesh.
-    /// </summary>
-    public float[] TextureCoordinates { get; set; } = Array.Empty<float>();
-
-    /// <summary>
-    /// The colors of the mesh.
-    /// </summary>
-    public float[] Colors { get; set; } = Array.Empty<float>();
-
-    /// <summary>
     /// The indices of the mesh.
     /// </summary>
     public uint[] Indices { get; set; } = Array.Empty<uint>();
+
+    /// <summary>
+    /// The vertex of the mesh.
+    /// </summary>
+    public VertexPositionColorTexture[] Vertices = Array.Empty<VertexPositionColorTexture>();
 
     /// <summary>
     /// Merge two geometries into one.
@@ -53,14 +43,12 @@ public class ParserGeometry
         List<uint> indices = a.Indices.ToList();
         for (int i = 0; i < b.Indices.Length; i++)
         {
-            indices.Add(b.Indices[i] + (uint)a.Positions.Length / 3);
+            indices.Add(b.Indices[i] + (uint)a.Vertices.Length);
         }
 
         return new ParserGeometry
         {
-            Positions = a.Positions.Concat(b.Positions).ToArray(),
-            TextureCoordinates = a.TextureCoordinates.Concat(b.TextureCoordinates).ToArray(),
-            Colors = a.Colors.Concat(b.Colors).ToArray(),
+            Vertices = a.Vertices.Concat(b.Vertices).ToArray(),
             Indices = indices.ToArray()
         };
     }

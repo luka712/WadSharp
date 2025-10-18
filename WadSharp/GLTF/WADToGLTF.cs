@@ -1,8 +1,10 @@
 ﻿using AssetToolkit.Image;
+using GeometryToolkit.Vertex;
 using SharpGLTF.Schema2;
 using System.Numerics;
 using WadSharp.GLTF.Data;
 using WadSharp.Parsing;
+using WadSharp.Util;
 
 namespace WadSharp.GLTF;
 
@@ -95,21 +97,20 @@ public class WadToGltf
     private WADToGLTFNodeData CreateNode(
         ModelRoot model,
         ParserSector sector,
-        List<ParserImage> images,
-        string image,
-        float[] posVertices,
-        float[] textureCoordsVertices,
-        float[] colorsVertices,
+        SheetCollection sheetCollection,
+        string imageName,
+        VertexPositionColorTexture[] vertices,
         uint[] indices)
     {
-        ParserImage parserImage = images.First(x => x.Name == image);
+        SheetSprite sprite = sheetCollection.GetSprite(imageName);
+        ParserImage parserImage = sprite.Image!;
         bool hasTransparency = parserImage.HasTransparency;
-        AddImageToModel(parserImage, model);
+        AddImageToModel(sprite, model);
 
-        Material material = model.CreateMaterial(image)
+        Material material = model.CreateMaterial(imageName)
             .WithDoubleSide(hasTransparency) // If we have transparency, we need double sided.
             .WithUnlit()
-            .WithChannelTexture("BaseColor", 0, model.LogicalImages.First(x => x.Name == image));
+            .WithChannelTexture("BaseColor", 0, model.LogicalImages.First(x => x.Name == sprite.Sheet.Name));
 
         if (hasTransparency)
         {
@@ -117,9 +118,10 @@ public class WadToGltf
         }
 
         // Create mesh
-        Vector3[] positions = ToVector3Array(posVertices);
-        Vector2[] texCoords = ToVector2Array(textureCoordsVertices);
-        Vector4[] colors = ToVector4Array(colorsVertices);
+        Vector3[] positions = vertices.Select(v => v.Position).ToArray();
+        Vector2[] texCoords = MapTextureCoordsToSheet(sprite, vertices.Select(x => x.UV).ToArray());
+        Vector4[] colors = vertices.Select(v => v.Color).ToArray();
+
         Mesh mesh = model.CreateMesh($"Floor {sector.Id}");
         int[] indicesInt = indices.Select(x => (int)x).ToArray();
         mesh.CreatePrimitive()
@@ -129,27 +131,36 @@ public class WadToGltf
             .WithMaterial(material)
             .WithIndicesAccessor(PrimitiveType.TRIANGLES, indicesInt);
 
-        return new (mesh, material, hasTransparency, sector);
+        return new(mesh, material, hasTransparency, sector);
     }
 
 
     /// <summary>
-    /// Adds images to the model.
+    /// Take sheet sprite and adds the sheet image of the sprite to the model if it does not already exist.
     /// </summary>
-    /// <param name="images">Wad images.</param>
+    /// <param name="sheetSprite">The sprite in a sheet.</param>
     /// <param name="model">The gltf root model.</param>
     private void AddImageToModel(
-        ParserImage image,
+        SheetSprite sheetSprite,
         ModelRoot model)
     {
-        if (!model.LogicalImages.Any(x => x.Name == image.Name))
+        Sheet sheet = sheetSprite.Sheet;
+        if (!model.LogicalImages.Any(x => x.Name == sheet.Name))
         {
-            imgService.SavePngImage(image.Name, image.Data, image.Width, image.Height);
-            model.CreateImage(image.Name).Content = new SharpGLTF.Memory.MemoryImage($"{image.Name}.png");
+            imgService.SavePngImage(sheet.Name, sheet.Data, sheet.Width, sheet.Height);
+            model.CreateImage(sheet.Name).Content = new SharpGLTF.Memory.MemoryImage($"{sheet.Name}.png");
         }
     }
 
-    private List<ParserImage> GetImages(Parser parser, WADLevel level)
+    /// <summary>
+    /// Creates a sheet collection of images from given parser and level.
+    /// </summary>
+    /// <param name="parser">The <see cref="Parser"/>.</param>
+    /// <param name="level">The <see cref="WADLevel"/>.</param>
+    /// <returns>
+    /// The <see cref="SheetCollection"/>.
+    /// </returns>
+    private SheetCollection CreateSheetCollection(Parser parser, WADLevel level)
     {
         List<ParserImage> wallTextures = parser.ParsePatches(level.Patches, level.PlayPals[0]);
         List<ParserImage> flatTextures = parser.ParseFlats(level.Flats, level.PlayPals[0]);
@@ -162,11 +173,98 @@ public class WadToGltf
             level.Patches,
             level.PlayPals[0]);
 
-        return wallTextures
+        List<ParserImage> images = wallTextures
             .Concat(flatTextures)
             .Concat(textures)
             .Concat(textures2)
             .ToList();
+
+        return SheetCollection.Create(images);
+    }
+
+    /// <summary>
+    /// Map the texture coordinates for single image from DOOM to the texture coordinates of the sprite in the sheet.
+    /// Effectively remaps the 0-1 UV coordinates to the correct coordinates in the sprite sheet.
+    /// </summary>
+    /// <param name="sprite">The <see cref="SheetSprite"/> which is sprite in a sheet.</param>
+    /// <param name="textureCoordinates">
+    /// The texture coordinates to map, in the range of 0-1 for the original image.
+    /// </param>
+    /// <returns>
+    /// The new texture coordinates mapped to the sprite sheet.
+    /// </returns>
+    private float[] MapTextureCoordsToSheet(SheetSprite sprite, float[] textureCoordinates)
+    {
+        float[] newTexCoords = new float[textureCoordinates.Length];
+
+        float minU = float.PositiveInfinity;
+        float maxU = float.NegativeInfinity;
+        float minV = float.PositiveInfinity;
+        float maxV = float.NegativeInfinity;
+
+        for (int i = 0; i < textureCoordinates.Length / 2; i++)
+        {
+            float u = textureCoordinates[i * 2 + 0];
+            float v = textureCoordinates[i * 2 + 1];
+
+            if (u < minU) minU = u;
+            if (u > maxU) maxU = u;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+        }
+
+        for (int i = 0; i < textureCoordinates.Length / 2; i++)
+        {
+            float u = textureCoordinates[i * 2 + 0];
+            float v = textureCoordinates[i * 2 + 1];
+
+            newTexCoords[i * 2 + 0] = MathUtil.Map(u, minU, maxU, sprite.U0, sprite.U1);
+            newTexCoords[i * 2 + 1] = MathUtil.Map(v, minV, maxV, sprite.V0, sprite.V1);
+        }
+        return newTexCoords;
+    }
+
+    /// <summary>
+    /// Map the texture coordinates for single image from DOOM to the texture coordinates of the sprite in the sheet.
+    /// Effectively remaps the 0-1 UV coordinates to the correct coordinates in the sprite sheet.
+    /// </summary>
+    /// <param name="sprite">The <see cref="SheetSprite"/> which is sprite in a sheet.</param>
+    /// <param name="textureCoordinates">
+    /// The texture coordinates to map, in the range of 0-1 for the original image.
+    /// </param>
+    /// <returns>
+    /// The new texture coordinates mapped to the sprite sheet.
+    /// </returns>
+    private Vector2[] MapTextureCoordsToSheet(SheetSprite sprite, Vector2[] textureCoordinates)
+    {
+        Vector2[] newTexCoords = new Vector2[textureCoordinates.Length];
+
+        float minU = float.PositiveInfinity;
+        float maxU = float.NegativeInfinity;
+        float minV = float.PositiveInfinity;
+        float maxV = float.NegativeInfinity;
+
+        for (int i = 0; i < textureCoordinates.Length; i++)
+        {
+            float u = textureCoordinates[i].X;
+            float v = textureCoordinates[i].Y;
+
+            if (u < minU) minU = u;
+            if (u > maxU) maxU = u;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+        }
+
+        for (int i = 0; i < textureCoordinates.Length; i++)
+        {
+            float u = textureCoordinates[i].X;
+            float v = textureCoordinates[i].Y;
+
+            u = MathUtil.Map(u, minU, maxU, sprite.U0, sprite.U1);
+            v = MathUtil.Map(v, minV, maxV, sprite.V0, sprite.V1);
+            newTexCoords[i] = new Vector2(u, v);
+        }
+        return newTexCoords;
     }
 
     /// <summary>
@@ -176,7 +274,7 @@ public class WadToGltf
     /// <param name="destinationPath"></param>
     public void ToGLTF(WADLevel level, string destinationPath)
     {
-        if(destinationPath.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase))
+        if (destinationPath.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase))
         {
             destinationPath = destinationPath[..^5]; // Remove .gltf extension if present
         }
@@ -184,7 +282,7 @@ public class WadToGltf
         Parser parser = new();
 
         List<ParserSector> sectors = parser.ParseSectors(level);
-        List<ParserImage> images = GetImages(parser, level);
+        SheetCollection sheetCollection = CreateSheetCollection(parser, level);
 
         Dictionary<string, Material> materials = new();
 
@@ -200,11 +298,9 @@ public class WadToGltf
                 WADToGLTFNodeData nodeData = CreateNode(
                     model,
                     sector,
-                    images,
+                    sheetCollection,
                     sector.FloorImage ?? "",
-                    sector.FloorGeometry.Positions,
-                    sector.FloorGeometry.TextureCoordinates,
-                    sector.FloorGeometry.Colors,
+                    sector.FloorGeometry.Vertices,
                     sector.FloorGeometry.Indices);
                 nodeDataList.Add(nodeData);
             }
@@ -214,11 +310,9 @@ public class WadToGltf
                 WADToGLTFNodeData nodeData = CreateNode(
                     model,
                     sector,
-                    images,
+                    sheetCollection,
                     sector.CeilingImage ?? "",
-                    sector.CeilingGeometry.Positions,
-                    sector.CeilingGeometry.TextureCoordinates,
-                    sector.CeilingGeometry.Colors,
+                    sector.CeilingGeometry.Vertices,
                     sector.CeilingGeometry.Indices);
                 nodeDataList.Add(nodeData);
             }
@@ -228,17 +322,15 @@ public class WadToGltf
                 WADToGLTFNodeData nodeData = CreateNode(
                     model,
                     sector,
-                    images,
+                    sheetCollection,
                     wall.Texture ?? "",
-                    wall.Geometry.Positions,
-                    wall.Geometry.TextureCoordinates,
-                    wall.Geometry.Colors,
+                    wall.Geometry.Vertices,
                     wall.Geometry.Indices);
                 nodeDataList.Add(nodeData);
             }
         }
 
-        foreach(WADToGLTFNodeData nodeData in nodeDataList.OrderBy(x => x.hasTransparency))
+        foreach (WADToGLTFNodeData nodeData in nodeDataList.OrderBy(x => x.hasTransparency))
         {
             scene.CreateNode($"Sector_{nodeData.wadSector.Id}")
                 .WithMesh(nodeData.mesh);

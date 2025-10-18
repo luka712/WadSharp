@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using GeometryToolkit.Vertex;
+using System.Numerics;
 using WadSharp.Parts;
 
 namespace WadSharp.Parsing;
@@ -416,26 +417,19 @@ public class ParserSector
 
         // Create the mesh.
         ParserGeometry geometry = new();
-        geometry.Positions = new float[vertices.Length * 3];
-        geometry.TextureCoordinates = new float[vertices.Length * 2];
-        geometry.Colors = new float[vertices.Length * 4];
+        geometry.Vertices = new VertexPositionColorTexture[vertices.Length];
         geometry.Indices = indices;
 
-        for (int i = 0, p = 0, c = 0, t = 0; i < vertices.Length; i++)
+        for (int i = 0; i < vertices.Length; i++)
         {
             Vector3 vertex = vertices[i];
 
-            geometry.Positions[p++] = vertex.X;
-            geometry.Positions[p++] = height;
-            geometry.Positions[p++] = vertex.Z;
-
-            geometry.Colors[c++] = color.X;
-            geometry.Colors[c++] = color.Y;
-            geometry.Colors[c++] = color.Z;
-            geometry.Colors[c++] = color.W;
-
-            geometry.TextureCoordinates[t++] = vertex.X / 64f;
-            geometry.TextureCoordinates[t++] = vertex.Z / 64f;
+            geometry.Vertices[i] = new VertexPositionColorTexture()
+            {
+                Position = new Vector3(vertex.X, height, vertex.Z),
+                Color = color,
+                UV = new Vector2(vertex.X / 64f, vertex.Z / 64f)
+            };
         }
 
         return geometry;
