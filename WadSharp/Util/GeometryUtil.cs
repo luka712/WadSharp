@@ -8,7 +8,6 @@ using System.Runtime.CompilerServices;
 
 namespace WadSharp.Util
 {
-  
 
     public class GeometryUtil
     {

@@ -21,8 +21,10 @@ public class ParserGeometry
     /// Merge two geometries into one.
     /// </summary>
     /// <param name="a">The a geometry.</param>
-    /// <param name="b">The b </param>
-    /// <returns></returns>
+    /// <param name="b">The b geometry.</param>
+    /// <returns>
+    /// The merged geometry.
+    /// </returns>
     public static ParserGeometry? MergeGeometry(ParserGeometry? a, ParserGeometry? b)
     {
         // If both are null, return null

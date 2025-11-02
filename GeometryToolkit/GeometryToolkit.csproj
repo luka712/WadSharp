@@ -11,8 +11,4 @@
     <PackageReference Include="MIConvexHull" Version="1.1.19.1019" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="NewFolder\" />
-  </ItemGroup>
-
 </Project>

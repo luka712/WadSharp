@@ -1,4 +1,6 @@
-﻿using GeometryToolkit.Vertex;
+﻿using GeometryToolkit.Triangle;
+using GeometryToolkit.Util;
+using GeometryToolkit.Vertex;
 using System.Collections.Generic;
 using System.Numerics;
 using WadSharp.Parts;
@@ -55,6 +57,7 @@ public class ParserSectorWall
                     colors[c++]),
             };
         }
+
         return vertices;
     }
 

@@ -1,4 +1,5 @@
 ﻿
+using SharpGLTF.Schema2;
 using System.Data.SqlTypes;
 using System.Drawing;
 
@@ -123,6 +124,12 @@ public class SheetSprite
 public class Sheet
 {
     /// <summary>
+    /// The shelf. At start it is empty. 
+    /// Will be size of first added image in height and full width of sheet.
+    /// </summary>
+    private Rectangle? shelf;
+
+    /// <summary>
     /// The constructor for the <see cref="Sheet"/>.
     /// </summary>
     /// <param name="sheetCollection">The sheet collection to which this sheet belongs to.</param>
@@ -177,9 +184,30 @@ public class Sheet
     /// </returns>
     public bool TryAddSprite(ParserImage image)
     {
-        if (TryFindSpace(image.Width, image.Height, out uint xCoord, out uint yCoord))
+        int marginX = 1;
+        int marginY = 1;
+
+        if (shelf == null)
         {
-            Sprites.Add(new SheetSprite(this, image, xCoord, yCoord, image.Width, image.Height));
+            // Create the shelf.
+            shelf = new Rectangle(0, 0, (int)Width, (int)(image.Height * marginY));
+        }
+
+        if (TryFindSpaceShelfs(image.Width, image.Height, out uint xCoord, out uint yCoord))
+        {
+            SheetSprite sprite = new(this, image, xCoord, yCoord, image.Width, image.Height);
+            Sprites.Add(sprite);
+
+            int shelfX = (int)xCoord + (int)image.Width;
+            int shelfY = (int)yCoord;
+
+            if (Width - shelfY - image.Height < 0)
+            {
+                // No space at all left in shelf we must return 
+                return false;
+            }
+
+            shelf = new Rectangle(shelfX, shelfY, (int)(Width - shelfX), (int)image.Height);
 
             // Copy image data to sheet data.
             for (uint y = 0; y < image.Height; y++)
@@ -197,6 +225,51 @@ public class Sheet
 
             return true;
         }
+        return false;
+    }
+
+    /// <summary>
+    /// Try to find space in the sheet for the given width and height.
+    /// </summary>
+    /// <param name="width">The required width.</param>
+    /// <param name="height">The required height.</param>
+    /// <param name="xCoord">The found  x coordinate in sheet.</param>
+    /// <param name="yCoord">The found y coordinate in sheet.</param>
+    /// <returns>
+    /// If <c>true</c> , space was found and coordinates are set; otherwise, <c>false</c>.
+    /// </returns>
+    public bool TryFindSpaceShelfs(uint width, uint height, out uint xCoord, out uint yCoord)
+    {
+        uint limitX = Width - width;
+        uint limitY = Height - height;
+
+        xCoord = 0;
+        yCoord = 0;
+
+        int marginX = 1;
+        int marginY = 1;
+
+        // Try to fit in the shelf.
+        if (shelf!.Value.Width >= width && shelf.Value.Height >= height)
+        {
+            xCoord = (uint)(shelf.Value.X);
+            yCoord = (uint)(shelf.Value.Y);
+
+            return true;
+        }
+
+        // Try to find space below the shelf, thus creating a new shelf.
+        shelf = new Rectangle(0, (int)(shelf.Value.Y + height), (int)Width - (int)width, (int)height);
+
+        // Check if the new shelf fits.
+        if (shelf!.Value.Width >= width && shelf.Value.Height >= height)
+        {
+            xCoord = (uint)(shelf.Value.X);
+            yCoord = (uint)(shelf.Value.Y);
+
+            return true;
+        }
+
         return false;
     }
 
@@ -230,36 +303,28 @@ public class Sheet
                 Rectangle rectangle = new(
                     (int)(xCoord + marginX),
                     (int)(yCoord + marginY),
-                    (int)(width - 2 * marginX), 
+                    (int)(width - 2 * marginX),
                     (int)(height - 2 * marginY));
 
                 // Try to intersect with existing sprites.
-                foreach (SheetSprite sprite in Sprites)
+                SheetSprite? intersect = Sprites.FirstOrDefault(s => s.Intersects(rectangle));
+                if (intersect != null)
                 {
-                    if (sprite.Intersects(rectangle))
-                    {
-                        // We intersect with an existing sprite, so we cannot place the image here.
-                        // Advance the x coordinate to the end of the sprite.
-                        xCoord = sprite.X + sprite.Width;
-                        hasSpace = false;
-                        break;
-                    }
+                    // We intersect with an existing sprite, so we cannot place the image here.
+                    // Advance the x coordinate to the end of the sprite.
+                    xCoord = intersect.X + intersect.Width;
+                    hasSpace = false;
                 }
 
                 if (hasSpace)
                 {
                     if (xCoord + 1 < limitX && yCoord + 1 < limitY)
                     {
-                        //xCoord++;
-                        //yCoord++;
                         return true;
                     }
                 }
             }
         }
-
-        //xCoord++;
-        //yCoord++;
 
         return xCoord < limitX && yCoord < limitY;
     }
@@ -337,7 +402,6 @@ public class SheetCollection(uint width, uint height)
         {
             if (!sheet.TryAddSprite(image))
             {
-
                 // No space in the current sheet, create a new one.
                 sheet = sheetCollection.Create();
 

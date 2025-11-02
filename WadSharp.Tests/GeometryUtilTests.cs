@@ -177,7 +177,7 @@ namespace WadSharp.Tests
                new(1, 1),
             };
 
-            List<int> indices = new();
+            List<uint> indices = new();
             MeshUtil.Triangulate2D(quad, indices);
 
             Assert.That(indices.Count, Is.EqualTo(6));

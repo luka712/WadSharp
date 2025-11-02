@@ -1,4 +1,6 @@
 ﻿using AssetToolkit.Image;
+using GeometryToolkit.Util;
+using GeometryToolkit.UV;
 using GeometryToolkit.Vertex;
 using SharpGLTF.Schema2;
 using System.Numerics;
@@ -49,51 +51,6 @@ public class WadToGltf
         => new Vector2(array[startIndex + 0],
                        array[startIndex + 1]);
 
-    /// <summary>
-    /// Convert a position array to an array of <see cref="Vector3"/>s.
-    /// </summary>
-    /// <param name="array">The positions <see cref="float"/> array.</param>
-    /// <returns>The <see cref="Vector3"/> array.</returns>
-    private static Vector3[] ToVector3Array(float[] array)
-    {
-        Vector3[] vectorArray = new Vector3[array.Length / 3];
-        for (int i = 0; i < vectorArray.Length; i++)
-        {
-            vectorArray[i] = ToVector3(array, i * 3);
-        }
-        return vectorArray;
-    }
-
-    /// <summary>
-    /// Convert a position array to an array of <see cref="Vector4"/>s.
-    /// </summary>
-    /// <param name="array">The positions <see cref="float"/> array.</param>
-    /// <returns>The <see cref="Vector4"/> array.</returns>
-    private static Vector4[] ToVector4Array(float[] array)
-    {
-        Vector4[] vectorArray = new Vector4[array.Length / 4];
-        for (int i = 0; i < vectorArray.Length; i++)
-        {
-            vectorArray[i] = ToVector4(array, i * 4);
-        }
-        return vectorArray;
-    }
-
-    /// <summary>
-    /// Convert a position array to an array of <see cref="Vector3"/>s.
-    /// </summary>
-    /// <param name="positions">The positions <see cref="float"/> array.</param>
-    /// <returns>The <see cref="Vector3"/> array.</returns>
-    private static Vector2[] ToVector2Array(float[] positions)
-    {
-        Vector2[] vectorArray = new Vector2[positions.Length / 2];
-        for (int i = 0; i < vectorArray.Length; i++)
-        {
-            vectorArray[i] = ToVector2(positions, i * 2);
-        }
-        return vectorArray;
-    }
-
     private WADToGLTFNodeData CreateNode(
         ModelRoot model,
         ParserSector sector,
@@ -117,13 +74,23 @@ public class WadToGltf
             material.Alpha = AlphaMode.BLEND;
         }
 
-        // Create mesh
+ 
         Vector3[] positions = vertices.Select(v => v.Position).ToArray();
-        Vector2[] texCoords = MapTextureCoordsToSheet(sprite, vertices.Select(x => x.UV).ToArray());
+        Vector2[] texCoords = vertices.Select(v => v.UV).ToArray(); // MapTextureCoordsToSheet(sprite, vertices.Select(x => x.UV).ToArray());
         Vector4[] colors = vertices.Select(v => v.Color).ToArray();
 
+        float xMin = texCoords.Min(tc => tc.X);
+        float xMax = texCoords.Max(tc => tc.X);
+        List<float> result = new();
+
+        List<uint> newIndices = new List<uint>();
+        MeshUtil.Triangulate(vertices, newIndices);
+
+        // Create mesh
+    
+
         Mesh mesh = model.CreateMesh($"Floor {sector.Id}");
-        int[] indicesInt = indices.Select(x => (int)x).ToArray();
+        int[] indicesInt = newIndices.Select(x => (int)x).ToArray();
         mesh.CreatePrimitive()
             .WithVertexAccessor("POSITION", positions)
             .WithVertexAccessor("TEXCOORD_0", texCoords)
@@ -319,14 +286,21 @@ public class WadToGltf
 
             foreach (ParserSectorWall wall in sector.Walls)
             {
-                WADToGLTFNodeData nodeData = CreateNode(
-                    model,
-                    sector,
-                    sheetCollection,
-                    wall.Texture ?? "",
-                    wall.Geometry.Vertices,
-                    wall.Geometry.Indices);
-                nodeDataList.Add(nodeData);
+                try
+                {
+                    WADToGLTFNodeData nodeData = CreateNode(
+                        model,
+                        sector,
+                        sheetCollection,
+                        wall.Texture ?? "",
+                        wall.Geometry.Vertices,
+                        wall.Geometry.Indices);
+                    nodeDataList.Add(nodeData);
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"Failed to create wall for sector {sector.Id} with texture {wall.Texture}: {ex.Message}");
+                }
             }
         }
 
