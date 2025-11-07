@@ -11,9 +11,11 @@
 
   <ItemGroup>
     <PackageReference Include="Clipper2" Version="1.5.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
+    <PackageReference Include="Ris.AssetToolkit" Version="1.0.7" />
+    <PackageReference Include="Ris.AssetToolkit.Interface" Version="1.0.3" />
     <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.5" />
-    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
   </ItemGroup>
 
   <ItemGroup>
